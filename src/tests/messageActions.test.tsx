@@ -296,12 +296,29 @@ describe("Message interactions", () => {
     void user;
   });
 
-  it("opens the reaction picker on long press for touch pointers", async () => {
+  function actionsCluster(target: HTMLElement) {
+    const cluster = within(target)
+      .getByRole("button", { name: "React to message" })
+      .parentElement;
+    if (!cluster) throw new Error("actions cluster not found");
+    return cluster as HTMLElement;
+  }
+
+  function hasClass(el: HTMLElement, token: string) {
+    return el.className.split(/\s+/).includes(token);
+  }
+
+  it("reveals the inline action icons on long press below 768px", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(767);
     renderApp();
     await openConversation("Liam Patel");
     const messages = screen.getByRole("log", { name: "Messages" });
     const target = messageItem(messages, "msg-liam-1");
     const bubble = target.querySelector("p")?.parentElement as HTMLElement;
+    const cluster = actionsCluster(target);
+
+    expect(hasClass(cluster, "max-md:hidden")).toBe(true);
+    expect(hasClass(cluster, "opacity-100")).toBe(false);
 
     vi.useFakeTimers();
     try {
@@ -313,13 +330,44 @@ describe("Message interactions", () => {
       act(() => {
         vi.advanceTimersByTime(500);
       });
-      expect(screen.getByRole("menu", { name: "Pick a reaction" })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
+
+    expect(hasClass(cluster, "opacity-100")).toBe(true);
+    expect(hasClass(cluster, "max-md:hidden")).toBe(false);
+    expect(screen.queryByRole("menu", { name: "Pick a reaction" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: "Message actions" })).not.toBeInTheDocument();
   });
 
-  it("applies the reaction chosen from the long-press picker", async () => {
+  it("keeps the action icons hidden by default and on long press at 768px or wider", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1024);
+    renderApp();
+    await openConversation("Liam Patel");
+    const messages = screen.getByRole("log", { name: "Messages" });
+    const target = messageItem(messages, "msg-liam-1");
+    const bubble = target.querySelector("p")?.parentElement as HTMLElement;
+    const cluster = actionsCluster(target);
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.pointerDown(bubble, {
+        pointerType: "touch",
+        clientX: 10,
+        clientY: 10,
+      });
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(hasClass(cluster, "opacity-100")).toBe(false);
+  });
+
+  it("opens the reaction picker when tapping the revealed react icon", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(767);
     const store = renderApp();
     await openConversation("Liam Patel");
     const messages = screen.getByRole("log", { name: "Messages" });
@@ -340,6 +388,7 @@ describe("Message interactions", () => {
       vi.useRealTimers();
     }
 
+    fireEvent.click(within(target).getByRole("button", { name: "React to message" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "React with ❤️" }));
 
     const reaction = store
@@ -348,12 +397,14 @@ describe("Message interactions", () => {
     expect(reaction?.userIds).toContain("user-current");
   });
 
-  it("does not open the reaction picker on a short tap", async () => {
+  it("keeps the action icons hidden on a short tap", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(767);
     renderApp();
     await openConversation("Liam Patel");
     const messages = screen.getByRole("log", { name: "Messages" });
     const target = messageItem(messages, "msg-liam-1");
     const bubble = target.querySelector("p")?.parentElement as HTMLElement;
+    const cluster = actionsCluster(target);
 
     vi.useFakeTimers();
     try {
@@ -366,10 +417,12 @@ describe("Message interactions", () => {
       act(() => {
         vi.advanceTimersByTime(500);
       });
-      expect(screen.queryByRole("menu", { name: "Pick a reaction" })).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
+
+    expect(hasClass(cluster, "max-md:hidden")).toBe(true);
+    expect(hasClass(cluster, "opacity-100")).toBe(false);
   });
 
   it("offers Edit only for own messages in the actions menu", async () => {
