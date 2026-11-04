@@ -8,6 +8,22 @@ data and timers.
 - **Desktop / tablet:** conversation sidebar and active chat side by side.
 - **Mobile:** conversation list and full-screen chat with back navigation.
 
+**Live demo:** https://hyapp-vert.vercel.app/
+**Repository:** https://github.com/mandeepsingh9773/hyapp
+
+---
+
+## Deliverables
+
+| Deliverable                                          | Where                                                             |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| GitHub repository with source code                   | https://github.com/mandeepsingh9773/hyapp                         |
+| Working frontend application                         | https://hyapp-vert.vercel.app/ (plus `npm run dev` locally)       |
+| README with installation and setup instructions      | This file — [Setup](#setup)                                       |
+| Architecture diagram                                 | This file — [Architecture](#architecture)                         |
+| State management and key architectural decisions     | This file — [State model](#state-model) and [Assumptions and trade-offs](#assumptions-and-trade-offs) |
+| Unit tests for important components or interactions  | `src/tests/` — 16 files, 111 tests ([Testing](#testing))         |
+
 ---
 
 ## Setup
@@ -42,6 +58,68 @@ React Testing Library (jsdom).
 Feature-based structure that separates UI, state transitions, selectors, mock
 data, and simulation. The rule of thumb is **single responsibility first**: each
 module has one reason to change.
+
+### Diagram
+
+```mermaid
+flowchart TD
+    subgraph App["Next.js static export (single route /)"]
+        Page["page.tsx → App.tsx"]
+        subgraph Shell["AppShell"]
+            CP["ConversationPane<br/>(sidebar)"]
+            ChatP["ChatPane<br/>(chat window)"]
+        end
+    end
+
+    subgraph Redux["Redux Toolkit store"]
+        Conv["conversations"]
+        Msg["messages"]
+        Inter["messageInteraction"]
+        Typing["typing"]
+        Groups["groups"]
+        Settings["settings"]
+    end
+
+    subgraph Derived["Selectors (derived, not stored)"]
+        SelConv["filtered list / previews / unread"]
+        SelMsg["date groups / reply refs / search"]
+        SelGroup["resolved members"]
+    end
+
+    subgraph Services["Services (no JSX, no dispatch)"]
+        Hydration["chatHydration<br/>(async seed load)"]
+        Sim["chatSimulation + mockChatService<br/>(timers, incoming, failure)"]
+        Clipboard["clipboardService"]
+        Directory["userDirectory"]
+    end
+
+    Data["Seed data (src/data)"]
+
+    Page --> Shell
+    CP --> Conv
+    ChatP --> Msg
+    CP --> SelConv
+    ChatP --> SelMsg
+    ChatP --> SelGroup
+    SelConv --> Conv
+    SelConv --> Msg
+    SelMsg --> Msg
+    SelGroup --> Groups
+
+    Shell -- dispatch --> Redux
+    Redux -- state --> Derived
+    Derived -- rendered data --> Shell
+
+    Hydration --> Data
+    Sim --> Data
+    Sim -- dispatch receiveMessage / setTyping --> Redux
+    Listener["chatListeners (middleware)"] -- sent→delivered→read --> Msg
+    Redux --> Listener
+    Directory --> Data
+    Shell --> Clipboard
+```
+
+### Directory structure
 
 ```
 src/
@@ -193,8 +271,15 @@ renders a placeholder. Replies keep pointing at the ID, so no reply is broken.
 ## Testing
 
 ```bash
-npm test
+npm test          # 16 files, 111 tests
+npm run typecheck # TypeScript, no emit
+npm run lint      # ESLint
 ```
+
+Suites live in `src/tests/` (e.g. `conversationSidebar`, `conversationSelectors`,
+`chatWindow`, `messageInteractions`, `messageSelectors`, `phase7Reducers`,
+`scrollBehavior`, `sendFailure`, `loadingStates`, `chatSimulationLoop`,
+`phase6Ui`, `app`).
 
 Coverage highlights:
 
@@ -229,6 +314,13 @@ Shared rendering helpers live in `src/tests/renderApp.tsx`.
   clears them on unmount.
 - **Derived data stays derived.** Previews, unread counts, grouped messages, and
   search results are computed in selectors.
+- **Optional features deferred.** Virtualization, infinite scroll, persistence,
+  offline queue, attachment preview, WebSocket simulation, and optimistic
+  rollback were intentionally left out to keep the core experience reliable
+  (see the project plan's deferred list).
+- **Demo tips.** Toggle the radio icon in the sidebar header to enable simulated
+  incoming messages/typing; send a message containing `#fail` to exercise the
+  failure + retry path.
 
 ### Decision log (Phase 7)
 
