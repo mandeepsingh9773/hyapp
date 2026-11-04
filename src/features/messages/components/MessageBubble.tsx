@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, CheckCheck, Clock, AlertCircle, Ban } from "lucide-react";
 import type { Message, MessageStatus } from "@/types/chat";
 import { getUserById } from "@/services/userDirectory";
@@ -9,13 +9,14 @@ import { displayTextOf } from "../utils/displayText";
 import type { SearchSegment } from "../selectors";
 import {
   MessageActions,
-  type MenuOpenAtDetail,
   type MessageActionHandlers,
 } from "./MessageActions";
-import { MessageReactions, OPEN_REACTIONS_AT_EVENT } from "./MessageReactions";
+import { MessageReactions } from "./MessageReactions";
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_TOLERANCE = 10;
+const MOBILE_MAX_WIDTH = 768;
+const SHOW_ACTIONS_EVENT = "message-bubble:show-actions";
 
 function StatusIcon({ status }: { status: MessageStatus }) {
   const label =
@@ -136,6 +137,7 @@ export function MessageBubble({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const [actionsVisible, setActionsVisible] = useState(false);
 
   const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) {
@@ -145,30 +147,42 @@ export function MessageBubble({
     pressOrigin.current = null;
   }, []);
 
+  useEffect(() => {
+    function onShowActions(event: Event) {
+      const detail = (event as CustomEvent<{ messageId: string }>).detail;
+      if (detail?.messageId !== message.id) setActionsVisible(false);
+    }
+
+    function onDocumentPointerDown(event: PointerEvent) {
+      if (bubbleRef.current?.contains(event.target as Node)) return;
+      setActionsVisible(false);
+    }
+
+    window.addEventListener(SHOW_ACTIONS_EVENT, onShowActions);
+    document.addEventListener("pointerdown", onDocumentPointerDown);
+    return () => {
+      window.removeEventListener(SHOW_ACTIONS_EVENT, onShowActions);
+      document.removeEventListener("pointerdown", onDocumentPointerDown);
+    };
+  }, [message.id]);
+
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
       if (isDeleted) return;
       const target = event.target as HTMLElement;
       if (target.closest("button, a, input, textarea, [role='button']")) return;
+      if (window.innerWidth >= MOBILE_MAX_WIDTH) return;
 
       pressOrigin.current = { x: event.clientX, y: event.clientY };
       longPressTimer.current = setTimeout(() => {
         longPressTimer.current = null;
-        const bubble = bubbleRef.current;
-        if (!bubble) return;
-        const rect = bubble.getBoundingClientRect();
-        const detail: MenuOpenAtDetail = {
-          messageId: message.id,
-          top: rect.top,
-          bottom: rect.bottom,
-          left: rect.left,
-        };
         window.dispatchEvent(
-          new CustomEvent<MenuOpenAtDetail>(OPEN_REACTIONS_AT_EVENT, {
-            detail,
+          new CustomEvent<{ messageId: string }>(SHOW_ACTIONS_EVENT, {
+            detail: { messageId: message.id },
           }),
         );
+        setActionsVisible(true);
         if (navigator.vibrate) navigator.vibrate(10);
       }, LONG_PRESS_MS);
     },
@@ -266,7 +280,9 @@ export function MessageBubble({
             ) : null}
 
             <div
-              className={`absolute top-1/2 flex shrink-0 -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:hidden ${
+              className={`absolute top-1/2 flex shrink-0 -translate-y-1/2 items-center gap-0.5 transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
+                actionsVisible ? "opacity-100" : "opacity-0 max-md:hidden"
+              } ${
                 isOwn
                   ? "right-full mr-1.5 flex-row-reverse"
                   : "left-full ml-1.5 flex-row"

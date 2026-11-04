@@ -27,13 +27,9 @@ export type MessageActionHandlers = {
 };
 
 export const OPEN_MENU_EVENT = "message-actions:open";
-export const OPEN_MENU_AT_EVENT = "message-actions:open-at";
 
-export type MenuOpenAtDetail = {
-  messageId: string;
-  top: number;
-  bottom: number;
-  left: number;
+type MenuOpenEventDetail = {
+  source: symbol;
 };
 
 export function MessageActions({
@@ -50,7 +46,6 @@ export function MessageActions({
   const [position, setPosition] = useState<{ top: number; left: number } | null>(
     null,
   );
-  const anchorOverrideRef = useRef<MenuOpenAtDetail | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const instanceId = useRef(Symbol("message-actions"));
@@ -58,7 +53,6 @@ export function MessageActions({
   const close = useCallback(() => {
     setIsOpen(false);
     setPosition(null);
-    anchorOverrideRef.current = null;
   }, []);
 
   useLayoutEffect(() => {
@@ -66,10 +60,9 @@ export function MessageActions({
 
     function updatePosition() {
       const trigger = triggerRef.current;
-      const override = anchorOverrideRef.current;
-      if (!trigger && !override) return;
+      if (!trigger) return;
 
-      const rect = override ?? trigger!.getBoundingClientRect();
+      const rect = trigger.getBoundingClientRect();
       const menuHeight = menuRef.current?.offsetHeight ?? 0;
       const geometry = computeMenuGeometry(
         { top: rect.top, bottom: rect.bottom, left: rect.left },
@@ -115,8 +108,8 @@ export function MessageActions({
     }
 
     function onExternalOpen(event: Event) {
-      const detail = (event as CustomEvent<symbol>).detail;
-      if (detail !== instanceId.current) close();
+      const detail = (event as CustomEvent<MenuOpenEventDetail>).detail;
+      if (detail?.source !== instanceId.current) close();
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -129,31 +122,15 @@ export function MessageActions({
     };
   }, [isOpen, close]);
 
-  useEffect(() => {
-    function onOpenAt(event: Event) {
-      const detail = (event as CustomEvent<MenuOpenAtDetail>).detail;
-      if (!detail || detail.messageId !== message.id) return;
-      window.dispatchEvent(
-        new CustomEvent<symbol>(OPEN_MENU_EVENT, { detail: instanceId.current }),
-      );
-      anchorOverrideRef.current = detail;
-      setIsOpen(true);
-    }
-
-    window.addEventListener(OPEN_MENU_AT_EVENT, onOpenAt);
-    return () => {
-      window.removeEventListener(OPEN_MENU_AT_EVENT, onOpenAt);
-    };
-  }, [message.id]);
-
   function toggle() {
     if (isOpen) {
       close();
       return;
     }
-    anchorOverrideRef.current = null;
     window.dispatchEvent(
-      new CustomEvent<symbol>(OPEN_MENU_EVENT, { detail: instanceId.current }),
+      new CustomEvent<MenuOpenEventDetail>(OPEN_MENU_EVENT, {
+        detail: { source: instanceId.current },
+      }),
     );
     setIsOpen(true);
   }
