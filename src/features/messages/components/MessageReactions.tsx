@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 import { SmilePlus } from "lucide-react";
 import { QUICK_REACTIONS, type Message } from "@/types/chat";
 import {
-  computeMenuGeometry,
+  computeBubblePickerGeometry,
   type MenuPlacement,
 } from "../utils/menuGeometry";
 import { OPEN_MENU_EVENT } from "./MessageActions";
@@ -46,10 +46,18 @@ export function MessageReactions({
       const trigger = triggerRef.current;
       if (!trigger) return;
 
-      const rect = trigger.getBoundingClientRect();
+      const bubble =
+        trigger.closest<HTMLElement>("[data-message-bubble]") ?? trigger;
+      const rect = bubble.getBoundingClientRect();
       const pickerHeight = pickerRef.current?.offsetHeight ?? 0;
-      const geometry = computeMenuGeometry(
-        { top: rect.top, bottom: rect.bottom, left: rect.left },
+      const geometry = computeBubblePickerGeometry(
+        {
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          width: rect.width,
+        },
+        PICKER_WIDTH,
         pickerHeight,
         { width: window.innerWidth, height: window.innerHeight },
       );

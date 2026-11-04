@@ -177,6 +177,35 @@ describe("Message interactions", () => {
     expect(reaction).toBeUndefined();
   });
 
+  it("positions the reaction picker below the bubble", async () => {
+    renderApp();
+    const user = await openConversation("Liam Patel");
+    const messages = screen.getByRole("log", { name: "Messages" });
+    const item = messageItem(messages, "msg-liam-1");
+    const bubble = item.querySelector("[data-message-bubble]") as HTMLElement;
+
+    bubble.getBoundingClientRect = () =>
+      ({
+        top: 100,
+        bottom: 150,
+        left: 300,
+        width: 200,
+        right: 500,
+        height: 50,
+        x: 300,
+        y: 100,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    await user.click(
+      within(item).getByRole("button", { name: "React to message" }),
+    );
+
+    const picker = screen.getByRole("menu", { name: "Pick a reaction" });
+    expect(picker.style.top).toBe("156px");
+    expect(picker.style.left).toBe("284px");
+  });
+
   it("does not offer a React option in the actions menu", async () => {
     renderApp();
     const user = await openConversation("Maya Chen");

@@ -224,6 +224,7 @@ export function MessageBubble({
           }}
         >
           <div
+            data-message-bubble
             className={`relative min-w-0 max-w-[85%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm sm:max-w-[70%] ${
               isDeleted
                 ? "border border-dashed border-border-subtle bg-transparent text-text-muted"

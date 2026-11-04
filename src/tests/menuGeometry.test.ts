@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeBubblePickerGeometry,
   computeMenuGeometry,
   MENU_MARGIN,
   MENU_OFFSET,
@@ -63,5 +64,65 @@ describe("computeMenuGeometry", () => {
       viewport,
     );
     expect(geometry.placement).toBe("bottom");
+  });
+});
+
+describe("computeBubblePickerGeometry", () => {
+  const pickerWidth = 232;
+  const pickerHeight = 40;
+
+  it("opens directly below the bubble", () => {
+    const geometry = computeBubblePickerGeometry(
+      { top: 100, bottom: 150, left: 200, width: 300 },
+      pickerWidth,
+      pickerHeight,
+      viewport,
+    );
+    expect(geometry.placement).toBe("bottom");
+    expect(geometry.top).toBe(150 + MENU_OFFSET);
+  });
+
+  it("centers horizontally on the bubble", () => {
+    const geometry = computeBubblePickerGeometry(
+      { top: 100, bottom: 150, left: 200, width: 300 },
+      pickerWidth,
+      pickerHeight,
+      viewport,
+    );
+    expect(geometry.left).toBe(200 + 300 / 2 - pickerWidth / 2);
+  });
+
+  it("clamps to the left margin for bubbles near the left edge", () => {
+    const geometry = computeBubblePickerGeometry(
+      { top: 100, bottom: 150, left: 0, width: 120 },
+      pickerWidth,
+      pickerHeight,
+      { width: 360, height: 800 },
+    );
+    expect(geometry.left).toBe(MENU_MARGIN);
+  });
+
+  it("clamps to the right margin for bubbles near the right edge", () => {
+    const narrowViewport = { width: 360, height: 800 };
+    const geometry = computeBubblePickerGeometry(
+      { top: 100, bottom: 150, left: 240, width: 120 },
+      pickerWidth,
+      pickerHeight,
+      narrowViewport,
+    );
+    expect(geometry.left).toBe(
+      narrowViewport.width - pickerWidth - MENU_MARGIN,
+    );
+  });
+
+  it("flips above the bubble when space below is limited", () => {
+    const geometry = computeBubblePickerGeometry(
+      { top: 700, bottom: 760, left: 100, width: 200 },
+      pickerWidth,
+      pickerHeight,
+      viewport,
+    );
+    expect(geometry.placement).toBe("top");
+    expect(geometry.top).toBe(700 - pickerHeight - MENU_OFFSET);
   });
 });
