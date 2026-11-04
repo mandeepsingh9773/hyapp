@@ -9,11 +9,10 @@ import { displayTextOf } from "../utils/displayText";
 import type { SearchSegment } from "../selectors";
 import {
   MessageActions,
-  OPEN_MENU_AT_EVENT,
   type MenuOpenAtDetail,
   type MessageActionHandlers,
 } from "./MessageActions";
-import { MessageReactions } from "./MessageReactions";
+import { MessageReactions, OPEN_REACTIONS_AT_EVENT } from "./MessageReactions";
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_TOLERANCE = 10;
@@ -166,7 +165,7 @@ export function MessageBubble({
           left: rect.left,
         };
         window.dispatchEvent(
-          new CustomEvent<MenuOpenAtDetail>(OPEN_MENU_AT_EVENT, {
+          new CustomEvent<MenuOpenAtDetail>(OPEN_REACTIONS_AT_EVENT, {
             detail,
           }),
         );
@@ -199,7 +198,7 @@ export function MessageBubble({
       >
         <div
           ref={bubbleRef}
-          className="relative max-w-full min-w-0"
+          className={`relative flex w-full min-w-0 ${isOwn ? "justify-end" : "justify-start"}`}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={cancelLongPress}
@@ -211,7 +210,7 @@ export function MessageBubble({
           }}
         >
           <div
-            className={`min-w-0 max-w-[85%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm sm:max-w-[70%] ${
+            className={`relative min-w-0 max-w-[85%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm sm:max-w-[70%] ${
               isDeleted
                 ? "border border-dashed border-border-subtle bg-transparent text-text-muted"
                 : isOwn
@@ -265,22 +264,22 @@ export function MessageBubble({
                 </button>
               </div>
             ) : null}
-          </div>
 
-          <div
-            className={`absolute top-1/2 flex shrink-0 -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:hidden ${
-              isOwn
-                ? "right-full mr-1.5 flex-row-reverse"
-                : "left-full ml-1.5 flex-row"
-            }`}
-          >
-            {!isDeleted ? (
-              <MessageReactions
-                message={message}
-                onReact={handlers.onReact}
-              />
-            ) : null}
-            <MessageActions message={message} isOwn={isOwn} handlers={handlers} />
+            <div
+              className={`absolute top-1/2 flex shrink-0 -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 max-md:hidden ${
+                isOwn
+                  ? "right-full mr-1.5 flex-row-reverse"
+                  : "left-full ml-1.5 flex-row"
+              }`}
+            >
+              {!isDeleted ? (
+                <MessageReactions
+                  message={message}
+                  onReact={handlers.onReact}
+                />
+              ) : null}
+              <MessageActions message={message} isOwn={isOwn} handlers={handlers} />
+            </div>
           </div>
         </div>
 

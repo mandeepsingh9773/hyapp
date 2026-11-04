@@ -296,7 +296,7 @@ describe("Message interactions", () => {
     void user;
   });
 
-  it("opens the actions menu on long press for touch pointers", async () => {
+  it("opens the reaction picker on long press for touch pointers", async () => {
     renderApp();
     await openConversation("Liam Patel");
     const messages = screen.getByRole("log", { name: "Messages" });
@@ -313,13 +313,42 @@ describe("Message interactions", () => {
       act(() => {
         vi.advanceTimersByTime(500);
       });
-      expect(screen.getByRole("menu", { name: "Message actions" })).toBeInTheDocument();
+      expect(screen.getByRole("menu", { name: "Pick a reaction" })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("does not open the actions menu on a short tap", async () => {
+  it("applies the reaction chosen from the long-press picker", async () => {
+    const store = renderApp();
+    await openConversation("Liam Patel");
+    const messages = screen.getByRole("log", { name: "Messages" });
+    const target = messageItem(messages, "msg-liam-1");
+    const bubble = target.querySelector("p")?.parentElement as HTMLElement;
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.pointerDown(bubble, {
+        pointerType: "touch",
+        clientX: 10,
+        clientY: 10,
+      });
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "React with ❤️" }));
+
+    const reaction = store
+      .getState()
+      .messages.byId["msg-liam-1"].reactions.find((r) => r.emoji === "❤️");
+    expect(reaction?.userIds).toContain("user-current");
+  });
+
+  it("does not open the reaction picker on a short tap", async () => {
     renderApp();
     await openConversation("Liam Patel");
     const messages = screen.getByRole("log", { name: "Messages" });
@@ -337,7 +366,7 @@ describe("Message interactions", () => {
       act(() => {
         vi.advanceTimersByTime(500);
       });
-      expect(screen.queryByRole("menu", { name: "Message actions" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("menu", { name: "Pick a reaction" })).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
