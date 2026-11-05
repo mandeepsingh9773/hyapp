@@ -1,12 +1,12 @@
 export const STATUS_DELAYS_MS = {
   sent: 600,
-  delivered: 1200,
+  delivered: 1000,
   read: 2000,
 } as const;
 
 export const TYPING_DURATION_MS = 1500;
-export const INCOMING_MIN_DELAY_MS = 8000;
-export const INCOMING_MAX_DELAY_MS = 15000;
+export const INCOMING_MIN_DELAY_MS = 5000;
+export const INCOMING_MAX_DELAY_MS = 10000;
 
 export const STATUS_SEQUENCE = ["sent", "delivered", "read"] as const;
 
